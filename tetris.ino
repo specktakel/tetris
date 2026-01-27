@@ -13,6 +13,13 @@
 uint8_t Address = 0x20; //Start address (Default 0x20)
 JOYSTICK joystick; //Create instance of this object
 
+// stuff for running a delay
+const long DELAY = 5000.; // time step for falling pieces
+unsigned long previousMillis = 0.;
+unsigned long currentMillis;
+
+const int XSIZE = 16;
+const int YSIZE = 8;
 
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 
@@ -30,8 +37,6 @@ class Rectangle //TODO: make this child of abstract parent class
     bool moveDown();
     bool moveUp();
 };
-
-
 
 bool Rectangle::moveLeft()
 {
@@ -97,6 +102,29 @@ bool Rectangle::moveUp()
   return true;
 }
 
+class Matrix  // stores all fixed blocks
+{
+  public:
+    Matrix();
+    int data[XSIZE][YSIZE];
+};
+
+Matrix::Matrix() {
+  // fill all entries with zero
+  for (int i = 0; i < XSIZE; i++)
+  {
+    for (int j = 0; j < YSIZE; j++)
+    {
+      data[i][j] = 0;
+    }
+  }
+};
+
+void drawMatrix(Matrix mat, U8X8_SH1106_128X64_NONAME_HW_I2C u8)
+{
+  return;
+}
+
 void drawRectangle(Rectangle rect, U8X8_SH1106_128X64_NONAME_HW_I2C u8)
 {
   for (int i = 0; i<4;i++)
@@ -138,35 +166,39 @@ void setup() {
   Serial.println("done");
 }
 
+
 void loop() {
   //Serial.println("alive");
-  int X = joystick.getHorizontal();
-  int Y = joystick.getVertical();
-  int B = joystick.getButton();
+  
+  int Y = joystick.getHorizontal();
+  int X = joystick.getVertical();
+  //int B = joystick.getButton();
   bool success = false;
+  
   if  (X > 575)
   {
     Serial.println("right");
-    success = rect.moveRight();
+    success = rect.moveLeft();
   }
   else if (X < 450)
   {
     Serial.println("left");
-    success = rect.moveLeft();
+    success = rect.moveRight();
   }
-  if (Y > 575)
-  {
-    Serial.println("up");
-    success = rect.moveUp();
-  }
-  else if (Y < 450)
-  {
-    Serial.println("down");
-    success = rect.moveDown();
+  if (success) {
+    u8x8.clearDisplay();
+    drawRectangle(rect, u8x8);
+    u8x8.refreshDisplay();
   }
 
-  u8x8.clearDisplay();
-  drawRectangle(rect, u8x8);
-  u8x8.refreshDisplay();
-  delay(1000);
+  currentMillis = millis();
+  if (currentMillis - previousMillis > DELAY) {
+    success = rect.moveDown();
+    if (success) {
+      u8x8.clearDisplay();
+      drawRectangle(rect, u8x8);
+      u8x8.refreshDisplay();
+    }
+    previousMillis = currentMillis;
+  }
 }
