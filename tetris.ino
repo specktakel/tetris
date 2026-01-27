@@ -14,7 +14,7 @@ uint8_t Address = 0x20; //Start address (Default 0x20)
 JOYSTICK joystick; //Create instance of this object
 
 // stuff for running a delay
-const long DELAY = 5000.; // time step for falling pieces
+const long DELAY = 1000.; // time step for falling pieces
 unsigned long previousMillis = 0.;
 unsigned long currentMillis;
 
@@ -22,6 +22,13 @@ const int XSIZE = 16;
 const int YSIZE = 8;
 
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
+
+class Matrix  // stores all fixed blocks
+{
+  public:
+    Matrix();
+    int data[XSIZE][YSIZE];
+};
 
 class Rectangle //TODO: make this child of abstract parent class
 {
@@ -34,7 +41,7 @@ class Rectangle //TODO: make this child of abstract parent class
     };
     bool moveLeft();
     bool moveRight();
-    bool moveDown();
+    bool moveDown(Matrix);
     bool moveUp();
 };
 
@@ -58,7 +65,7 @@ bool Rectangle::moveRight()
 {
   for (int i = 0; i < 4; i++)
   {
-    if (coords[i][1] + 1 > 7)
+    if (coords[i][1] + 1 > YSIZE - 1)
     {
       return false;
     }
@@ -70,15 +77,22 @@ bool Rectangle::moveRight()
   return true;
 }
 
-bool Rectangle::moveDown()
+bool Rectangle::moveDown(Matrix mat)
 {
+  // check for collision with lower boundary
   for (int i = 0; i < 4; i++)
   {
-    if (coords[i][0] + 1 > 15)
+    if (coords[i][0] + 1 > XSIZE - 1)
     {
       return false;
     }
   }
+  /*
+  check for collision with existing pieces:
+  x+1 must be free (i.e.==0) in mat, means check coords[3, 0]+1, coords[4, 0]+1
+  */
+  if (mat.data[coords[3][0]+1][coords[3][1]] == 1 || mat.data[coords[4][0]+1][coords[4][1]] == 1) {return false;}
+
   for (int i = 0; i < 4; i++)
   {
     coords[i][0]++;
@@ -102,12 +116,7 @@ bool Rectangle::moveUp()
   return true;
 }
 
-class Matrix  // stores all fixed blocks
-{
-  public:
-    Matrix();
-    int data[XSIZE][YSIZE];
-};
+
 
 Matrix::Matrix() {
   // fill all entries with zero
@@ -139,12 +148,15 @@ int prev_j = 0;
 int prev_i = 0;
 
 Rectangle rect;
+Matrix mat;
+
 
 void setup() {
   u8x8.begin();
   u8x8.setPowerSave(0);
   u8x8.setFont(u8x8_font_chroma48medium8_r);
 
+  mat.data[14][4] = 1;
   Serial.begin(9600);
   Serial.println("Qwiic Joystick Example");
 
@@ -193,7 +205,7 @@ void loop() {
 
   currentMillis = millis();
   if (currentMillis - previousMillis > DELAY) {
-    success = rect.moveDown();
+    success = rect.moveDown(mat);
     if (success) {
       u8x8.clearDisplay();
       drawRectangle(rect, u8x8);
