@@ -32,10 +32,17 @@ const int FINAL = 2;
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 
 class Matrix;
-class Rectangle;
+class Piece {
+  public:
+    int coords[4][2];
+    virtual int moveLeft(Matrix);
+    virtual int moveRight(Matrix);
+    virtual int moveDown(Matrix);
+    //void draw(U8X8_SH1106_128X64_NONAME_HW_I2C); // why doesnt this work?
+};
 
-class Rectangle
-{
+
+class Rectangle : public Piece {
   public:
     int coords[4][2] = {
       {0, 3},
@@ -49,6 +56,27 @@ class Rectangle
     int moveUp();
     void draw(U8X8_SH1106_128X64_NONAME_HW_I2C);
 };
+
+void Rectangle::draw(U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
+  for (int i = 0; i < 4; i++) {
+    u8.drawString(coords[i][0], coords[i][1], "o");
+  }
+}
+
+class Long : public Piece {
+  public:
+    int coords[4][2] = {
+      {0, 2},
+      {0, 3},
+      {0, 4},
+      {0, 5},
+    };
+    int moveLeft(Matrix);
+    int moveRight(Matrix);
+    int moveDown(Matrix);
+    void draw(U8X8_SH1106_128X64_NONAME_HW_I2C);
+};
+
 
 class Matrix  // stores all fixed blocks
 {
@@ -183,8 +211,6 @@ int Rectangle::moveUp() {
   return ALLOWED;
 }
 
-
-
 Matrix::Matrix() {
   // fill all entries with zero
   for (int i = 0; i < XSIZE; i++) {
@@ -193,15 +219,6 @@ Matrix::Matrix() {
     }
   }
 };
-
-
-void Rectangle::draw(U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
-  for (int i = 0; i < 4; i++) {
-    u8.drawString(coords[i][0], coords[i][1], "o");
-  }
-}
-
-
 
 int i = 0;
 int j = 0;
