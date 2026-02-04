@@ -18,8 +18,11 @@ const long DELAY = 1000.; // time step for falling pieces
 unsigned long previousMillis = 0.;
 unsigned long currentMillis;
 
+
+// Display/matrix size
 const int XSIZE = 16;
 const int YSIZE = 8;
+
 
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 
@@ -39,13 +42,13 @@ class Rectangle //TODO: make this child of abstract parent class
       {1, 3},
       {1, 4},
     };
-    bool moveLeft();
-    bool moveRight();
+    bool moveLeft(Matrix);
+    bool moveRight(Matrix);
     bool moveDown(Matrix);
     bool moveUp();
 };
 
-bool Rectangle::moveLeft()
+bool Rectangle::moveLeft(Matrix mat)
 {
   for (int i = 0; i < 4; i++)
   {
@@ -54,6 +57,9 @@ bool Rectangle::moveLeft()
       return false;
     }
   }
+
+  if (mat.data[coords[0][0]-1][coords[0][1]] == 1 || mat.data[coords[2][0]-1][coords[2][1]] == 1) {return false;}
+
   for (int i = 0; i < 4; i++)
   {
     coords[i][1]--;
@@ -61,7 +67,7 @@ bool Rectangle::moveLeft()
   return true;
 }
 
-bool Rectangle::moveRight()
+bool Rectangle::moveRight(Matrix mat)
 {
   for (int i = 0; i < 4; i++)
   {
@@ -70,6 +76,9 @@ bool Rectangle::moveRight()
       return false;
     }
   }
+
+  if (mat.data[coords[1][0]+1][coords[1][1]] == 1 || mat.data[coords[3][0]+1][coords[3][1]] == 1) {return false;}
+
   for (int i = 0; i < 4; i++)
   {
     coords[i][1]++;
@@ -91,7 +100,7 @@ bool Rectangle::moveDown(Matrix mat)
   check for collision with existing pieces:
   x+1 must be free (i.e.==0) in mat, means check coords[3, 0]+1, coords[4, 0]+1
   */
-  if (mat.data[coords[3][0]+1][coords[3][1]] == 1 || mat.data[coords[4][0]+1][coords[4][1]] == 1) {return false;}
+  if (mat.data[coords[2][0]+1][coords[2][1]] == 1 || mat.data[coords[3][0]+1][coords[3][1]] == 1) {return false;}
 
   for (int i = 0; i < 4; i++)
   {
@@ -190,12 +199,12 @@ void loop() {
   if  (X > 575)
   {
     Serial.println("right");
-    success = rect.moveLeft();
+    success = rect.moveLeft(mat);
   }
   else if (X < 450)
   {
     Serial.println("left");
-    success = rect.moveRight();
+    success = rect.moveRight(mat);
   }
   if (success) {
     u8x8.clearDisplay();
