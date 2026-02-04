@@ -47,13 +47,14 @@ class Rectangle
     int moveRight(Matrix);
     int moveDown(Matrix);
     int moveUp();
+    void draw(U8X8_SH1106_128X64_NONAME_HW_I2C);
 };
 
 class Matrix  // stores all fixed blocks
 {
   public:
     Matrix();
-    void drawMatrix(U8X8_SH1106_128X64_NONAME_HW_I2C);
+    void draw(U8X8_SH1106_128X64_NONAME_HW_I2C);
     void addRectangle(Rectangle);
     bool checkLine(int);
     bool checkAllLines();
@@ -104,8 +105,14 @@ void Matrix::addRectangle(Rectangle rect) {
   }
 }
 
-void Matrix::drawMatrix(U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
-  return;
+void Matrix::draw(U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
+  for (int i = 0; i < XSIZE; i++) {
+    for (int j = 0; j < YSIZE; j++) {
+      if (data[i][j] == 1) {
+        u8.drawString(i, j, "o");
+      }
+    }
+  }
 }
 
 int Rectangle::moveLeft(Matrix mat)
@@ -187,25 +194,14 @@ Matrix::Matrix() {
   }
 };
 
-void drawMatrix(Matrix mat, U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
-  return;
-}
 
-void drawRectangle(Rectangle rect, U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
+void Rectangle::draw(U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
   for (int i = 0; i < 4; i++) {
-    u8.drawString(rect.coords[i][0], rect.coords[i][1], "o");
+    u8.drawString(coords[i][0], coords[i][1], "o");
   }
 }
 
-void drawRectangle(Matrix mat, U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
-  for (int i = 0; i < XSIZE; i++) {
-    for (int j = 0; j < YSIZE; j++) {
-      if (mat.data[i][j] == 1) {
-        u8.drawString(i, j, "o");
-      }
-    }
-  }
-}
+
 
 int i = 0;
 int j = 0;
@@ -233,7 +229,7 @@ void setup() {
 
   delay(2000);
   u8x8.clearDisplay();
-  drawRectangle(rect, u8x8);
+  rect.draw(u8x8);
   u8x8.refreshDisplay();
   for (int i = 0; i++; i < 4)
   {
@@ -262,8 +258,8 @@ void loop() {
   }
   if (success == ALLOWED) {
     u8x8.clearDisplay();
-    drawRectangle(rect, u8x8);
-    drawRectangle(mat, u8x8);
+    rect.draw(u8x8);
+    mat.draw(u8x8);
     u8x8.refreshDisplay();
   }
 
@@ -272,8 +268,8 @@ void loop() {
     success = rect.moveDown(mat);
     if (success == ALLOWED) {
       u8x8.clearDisplay();
-      drawRectangle(rect, u8x8);
-      drawRectangle(mat, u8x8);
+      rect.draw(u8x8);
+      mat.draw(u8x8);
       u8x8.refreshDisplay();
     }
     else if (success == FINAL) {
@@ -287,7 +283,7 @@ void loop() {
       else {
         u8x8.clearDisplay();
         mat.addRectangle(rect);
-        drawRectangle(mat, u8x8);
+        mat.draw(u8x8);
         rect = Rectangle();
         u8x8.refreshDisplay();
         mat.checkAllLines();
