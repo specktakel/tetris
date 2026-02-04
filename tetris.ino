@@ -23,17 +23,17 @@ unsigned long currentMillis;
 const int XSIZE = 16;
 const int YSIZE = 8;
 
+// exit codes for moving a tetris piece
+const int FORBIDDEN = 0;
+const int ALLOWED = 1;
+const int FINAL = 2;
+
 
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 
-class Matrix  // stores all fixed blocks
-{
-  public:
-    Matrix();
-    int data[XSIZE][YSIZE];
-};
+class Matrix;
 
-class Rectangle //TODO: make this child of abstract parent class
+class Rectangle
 {
   public:
     int coords[4][2] = {
@@ -42,87 +42,107 @@ class Rectangle //TODO: make this child of abstract parent class
       {1, 3},
       {1, 4},
     };
-    bool moveLeft(Matrix);
-    bool moveRight(Matrix);
-    bool moveDown(Matrix);
-    bool moveUp();
+    int moveLeft(Matrix);
+    int moveRight(Matrix);
+    int moveDown(Matrix);
+    int moveUp();
 };
 
-bool Rectangle::moveLeft(Matrix mat)
+
+class Matrix  // stores all fixed blocks
+{
+  public:
+    Matrix();
+    void drawMatrix(U8X8_SH1106_128X64_NONAME_HW_I2C);
+    void addRectangle(Rectangle);
+    int data[XSIZE][YSIZE];
+};
+
+void Matrix::addRectangle(Rectangle rect) {
+  for (int i = 0; i < 4; i++) {
+    data[rect.coords[i][0]][rect.coords[i][1]] = 1;
+  }
+}
+
+void Matrix::drawMatrix(U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
+  return;
+}
+
+int Rectangle::moveLeft(Matrix mat)
 {
   for (int i = 0; i < 4; i++)
   {
     if (coords[i][1] - 1 < 0)
     {  
-      return false;
+      return FORBIDDEN;
     }
   }
 
-  if (mat.data[coords[0][0]-1][coords[0][1]] == 1 || mat.data[coords[2][0]-1][coords[2][1]] == 1) {return false;}
+  if (mat.data[coords[0][0]][coords[0][1]-1] == 1 || mat.data[coords[2][0]][coords[2][1]-1] == 1) {return FORBIDDEN;}
 
   for (int i = 0; i < 4; i++)
   {
     coords[i][1]--;
   }
-  return true;
+  return ALLOWED;
 }
 
-bool Rectangle::moveRight(Matrix mat)
+int Rectangle::moveRight(Matrix mat)
 {
   for (int i = 0; i < 4; i++)
   {
     if (coords[i][1] + 1 > YSIZE - 1)
     {
-      return false;
+      return FORBIDDEN;
     }
   }
 
-  if (mat.data[coords[1][0]+1][coords[1][1]] == 1 || mat.data[coords[3][0]+1][coords[3][1]] == 1) {return false;}
+  if (mat.data[coords[1][0]][coords[1][1]+1] == 1 || mat.data[coords[3][0]][coords[3][1]+1] == 1) {return FORBIDDEN;}
 
   for (int i = 0; i < 4; i++)
   {
     coords[i][1]++;
   }
-  return true;
+  return ALLOWED;
 }
 
-bool Rectangle::moveDown(Matrix mat)
+int Rectangle::moveDown(Matrix mat)
 {
   // check for collision with lower boundary
   for (int i = 0; i < 4; i++)
   {
     if (coords[i][0] + 1 > XSIZE - 1)
     {
-      return false;
+      return FINAL;
     }
   }
   /*
   check for collision with existing pieces:
   x+1 must be free (i.e.==0) in mat, means check coords[3, 0]+1, coords[4, 0]+1
   */
-  if (mat.data[coords[2][0]+1][coords[2][1]] == 1 || mat.data[coords[3][0]+1][coords[3][1]] == 1) {return false;}
+  if (mat.data[coords[2][0]+1][coords[2][1]] == 1 || mat.data[coords[3][0]+1][coords[3][1]] == 1) {return FINAL;}
 
   for (int i = 0; i < 4; i++)
   {
     coords[i][0]++;
   }
-  return true;
+  return ALLOWED;
 }
 
-bool Rectangle::moveUp()
+int Rectangle::moveUp()
 {
   for (int i = 0; i < 4; i++)
   {
     if (coords[i][0] - 1 < 0)
     {
-      return false;
+      return FORBIDDEN;
     }
   }
   for (int i = 0; i < 4; i++)
   {
     coords[i][0]--;
   }
-  return true;
+  return ALLOWED;
 }
 
 
@@ -145,9 +165,23 @@ void drawMatrix(Matrix mat, U8X8_SH1106_128X64_NONAME_HW_I2C u8)
 
 void drawRectangle(Rectangle rect, U8X8_SH1106_128X64_NONAME_HW_I2C u8)
 {
-  for (int i = 0; i<4;i++)
+  for (int i = 0; i < 4; i++)
   {
     u8.drawString(rect.coords[i][0], rect.coords[i][1], "o");
+  }
+}
+
+void drawRectangle(Matrix mat, U8X8_SH1106_128X64_NONAME_HW_I2C u8)
+{
+  for (int i = 0; i < XSIZE; i++)
+  {
+    for (int j = 0; j < YSIZE; j++)
+    {
+      if (mat.data[i][j] == 1)
+      {
+        u8.drawString(i, j, "o");
+      }
+    }
   }
 }
 
@@ -194,7 +228,7 @@ void loop() {
   int Y = joystick.getHorizontal();
   int X = joystick.getVertical();
   //int B = joystick.getButton();
-  bool success = false;
+  int success = FORBIDDEN;
   
   if  (X > 575)
   {
@@ -206,19 +240,27 @@ void loop() {
     Serial.println("left");
     success = rect.moveRight(mat);
   }
-  if (success) {
+  if (success == ALLOWED) {
     u8x8.clearDisplay();
     drawRectangle(rect, u8x8);
+    drawRectangle(mat, u8x8);
     u8x8.refreshDisplay();
   }
 
   currentMillis = millis();
   if (currentMillis - previousMillis > DELAY) {
     success = rect.moveDown(mat);
-    if (success) {
+    if (success == ALLOWED) {
       u8x8.clearDisplay();
       drawRectangle(rect, u8x8);
+      drawRectangle(mat, u8x8);
       u8x8.refreshDisplay();
+    }
+    else if (success == FINAL) {
+      u8x8.clearDisplay();
+      mat.addRectangle(rect);
+      drawRectangle(mat, u8x8);
+      rect = Rectangle();
     }
     previousMillis = currentMillis;
   }
