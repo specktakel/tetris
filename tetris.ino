@@ -32,6 +32,7 @@ const int FINAL = 2;
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 
 class Matrix;
+class Rectangle;
 
 class Rectangle
 {
@@ -48,30 +49,52 @@ class Rectangle
     int moveUp();
 };
 
-
 class Matrix  // stores all fixed blocks
 {
   public:
     Matrix();
     void drawMatrix(U8X8_SH1106_128X64_NONAME_HW_I2C);
     void addRectangle(Rectangle);
-    bool checkLine();
-    void clearLine();
+    bool checkLine(int);
+    bool checkAllLines();
+    bool checkGameOver();
+    void clearLine(int);
     int data[XSIZE][YSIZE];
 };
 
+bool Matrix::checkGameOver() {
+  // TODO: improve game over ruling
+  for (int i = 0; i < YSIZE; i++) {
+    if (data[0][i] == 1) {return true;}
+  }
+  return false;
+}
 
-bool Matrix::checkLine() {
-  for (int i = 0; i < YSIZE; i++)
-  if (data[XSIZE - 1][i] == 0) {return false;}
+bool Matrix::checkAllLines() {
+  for (int i = XSIZE - 1; i > 0; i--) {
+    while (checkLine(i)) {
+      clearLine(i);
+    }
+  }
+}
+
+bool Matrix::checkLine(int X) {
+  for (int i = 0; i < YSIZE; i++) {
+    if (data[X][i] == 0) {
+      return false;
+    }
+  }
   return true;
 }
 
-void Matrix::clearLine() {
-  for (int i = XSIZE - 1; i >= 0; i--) {
-    for (int j = 0; j< YSIZE; j++) {
+void Matrix::clearLine(int X) {
+  for (int i = X; i >= 0; i--) {
+    for (int j = 0; j < YSIZE; j++) {
       data[i][j] = data[i - 1][j];
     }
+  }
+  for (int j = 0; j < YSIZE; j++) {
+    data[0][j] = 0;
   }
 }
 
@@ -87,15 +110,15 @@ void Matrix::drawMatrix(U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
 
 int Rectangle::moveLeft(Matrix mat)
 {
-  for (int i = 0; i < 4; i++)
-  {
-    if (coords[i][1] - 1 < 0)
-    {  
+  for (int i = 0; i < 4; i++) {
+    if (coords[i][1] - 1 < 0) {  
       return FORBIDDEN;
     }
   }
 
-  if (mat.data[coords[0][0]][coords[0][1]-1] == 1 || mat.data[coords[2][0]][coords[2][1]-1] == 1) {return FORBIDDEN;}
+  if (mat.data[coords[0][0]][coords[0][1]-1] == 1 || mat.data[coords[2][0]][coords[2][1]-1] == 1) {
+    return FORBIDDEN;
+  }
 
   for (int i = 0; i < 4; i++)
   {
@@ -106,57 +129,48 @@ int Rectangle::moveLeft(Matrix mat)
 
 int Rectangle::moveRight(Matrix mat)
 {
-  for (int i = 0; i < 4; i++)
-  {
-    if (coords[i][1] + 1 > YSIZE - 1)
-    {
+  for (int i = 0; i < 4; i++) {
+    if (coords[i][1] + 1 > YSIZE - 1) {
       return FORBIDDEN;
     }
   }
 
-  if (mat.data[coords[1][0]][coords[1][1]+1] == 1 || mat.data[coords[3][0]][coords[3][1]+1] == 1) {return FORBIDDEN;}
+  if (mat.data[coords[1][0]][coords[1][1]+1] == 1 || mat.data[coords[3][0]][coords[3][1]+1] == 1) {
+    return FORBIDDEN;
+  }
 
-  for (int i = 0; i < 4; i++)
-  {
+  for (int i = 0; i < 4; i++) {
     coords[i][1]++;
   }
   return ALLOWED;
 }
 
-int Rectangle::moveDown(Matrix mat)
-{
-  // check for collision with lower boundary
-  for (int i = 0; i < 4; i++)
-  {
+int Rectangle::moveDown(Matrix mat) {
+  for (int i = 0; i < 4; i++) {
     if (coords[i][0] + 1 > XSIZE - 1)
     {
       return FINAL;
     }
   }
-  /*
-  check for collision with existing pieces:
-  x+1 must be free (i.e.==0) in mat, means check coords[3, 0]+1, coords[4, 0]+1
-  */
-  if (mat.data[coords[2][0]+1][coords[2][1]] == 1 || mat.data[coords[3][0]+1][coords[3][1]] == 1) {return FINAL;}
 
-  for (int i = 0; i < 4; i++)
-  {
+  if (mat.data[coords[2][0]+1][coords[2][1]] == 1 || mat.data[coords[3][0]+1][coords[3][1]] == 1) {
+    return FINAL;
+  }
+
+  for (int i = 0; i < 4; i++) {
     coords[i][0]++;
   }
   return ALLOWED;
 }
 
-int Rectangle::moveUp()
-{
-  for (int i = 0; i < 4; i++)
-  {
+int Rectangle::moveUp() {
+  for (int i = 0; i < 4; i++) {
     if (coords[i][0] - 1 < 0)
     {
       return FORBIDDEN;
     }
   }
-  for (int i = 0; i < 4; i++)
-  {
+  for (int i = 0; i < 4; i++) {
     coords[i][0]--;
   }
   return ALLOWED;
@@ -166,36 +180,27 @@ int Rectangle::moveUp()
 
 Matrix::Matrix() {
   // fill all entries with zero
-  for (int i = 0; i < XSIZE; i++)
-  {
-    for (int j = 0; j < YSIZE; j++)
-    {
+  for (int i = 0; i < XSIZE; i++) {
+    for (int j = 0; j < YSIZE; j++) {
       data[i][j] = 0;
     }
   }
 };
 
-void drawMatrix(Matrix mat, U8X8_SH1106_128X64_NONAME_HW_I2C u8)
-{
+void drawMatrix(Matrix mat, U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
   return;
 }
 
-void drawRectangle(Rectangle rect, U8X8_SH1106_128X64_NONAME_HW_I2C u8)
-{
-  for (int i = 0; i < 4; i++)
-  {
+void drawRectangle(Rectangle rect, U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
+  for (int i = 0; i < 4; i++) {
     u8.drawString(rect.coords[i][0], rect.coords[i][1], "o");
   }
 }
 
-void drawRectangle(Matrix mat, U8X8_SH1106_128X64_NONAME_HW_I2C u8)
-{
-  for (int i = 0; i < XSIZE; i++)
-  {
-    for (int j = 0; j < YSIZE; j++)
-    {
-      if (mat.data[i][j] == 1)
-      {
+void drawRectangle(Matrix mat, U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
+  for (int i = 0; i < XSIZE; i++) {
+    for (int j = 0; j < YSIZE; j++) {
+      if (mat.data[i][j] == 1) {
         u8.drawString(i, j, "o");
       }
     }
@@ -247,13 +252,11 @@ void loop() {
   //int B = joystick.getButton();
   int success = FORBIDDEN;
   
-  if  (X > 575)
-  {
+  if  (X > 575) {
     Serial.println("right");
     success = rect.moveLeft(mat);
   }
-  else if (X < 450)
-  {
+  else if (X < 450) {
     Serial.println("left");
     success = rect.moveRight(mat);
   }
@@ -274,13 +277,20 @@ void loop() {
       u8x8.refreshDisplay();
     }
     else if (success == FINAL) {
-      u8x8.clearDisplay();
-      mat.addRectangle(rect);
-      drawRectangle(mat, u8x8);
-      rect = Rectangle();
-      u8x8.refreshDisplay();
-      while (mat.checkLine()) {
-        mat.clearLine();
+      if (mat.checkGameOver()) {
+        u8x8.clearDisplay();
+        u8x8.drawString(0, 0, "Game over!");
+        u8x8.refreshDisplay();
+        delay(5000);
+        mat = Matrix();
+      }
+      else {
+        u8x8.clearDisplay();
+        mat.addRectangle(rect);
+        drawRectangle(mat, u8x8);
+        rect = Rectangle();
+        u8x8.refreshDisplay();
+        mat.checkAllLines();
       }
     }
     previousMillis = currentMillis;
