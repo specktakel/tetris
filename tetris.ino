@@ -32,32 +32,45 @@ const int FINAL = 2;
 U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 
 class Matrix;
+
+class Rotatable;
+
 class Piece {
   public:
     int coords[4][2];
     virtual int moveLeft(Matrix);
     virtual int moveRight(Matrix);
     virtual int moveDown(Matrix);
-    //void draw(U8X8_SH1106_128X64_NONAME_HW_I2C); // why doesnt this work?
+    virtual int rotateLeft(Matrix);
+    virtual int rotateRight(Matrix);
+    void draw(U8X8_SH1106_128X64_NONAME_HW_I2C); // why doesnt this work?
 };
 
 
 class Rectangle : public Piece {
   public:
-    int coords[4][2] = {
-      {0, 3},
-      {0, 4},
-      {1, 3},
-      {1, 4},
-    };
+    Rectangle();
     int moveLeft(Matrix);
     int moveRight(Matrix);
     int moveDown(Matrix);
-    int moveUp();
-    void draw(U8X8_SH1106_128X64_NONAME_HW_I2C);
+    int rotateLeft(Matrix);
+    int rotateRight(Matrix);
+    //int moveUp();
+    //void draw(U8X8_SH1106_128X64_NONAME_HW_I2C);
 };
 
-void Rectangle::draw(U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
+Rectangle::Rectangle() {
+  coords[0][0] = 0;
+  coords[0][1] = 3;
+  coords[1][0] = 0;
+  coords[1][1] = 4;
+  coords[2][0] = 1;
+  coords[2][1] = 3;
+  coords[3][0] = 1;
+  coords[3][1] = 4;
+}
+
+void Piece::draw(U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
   for (int i = 0; i < 4; i++) {
     u8.drawString(coords[i][0], coords[i][1], "o");
   }
@@ -65,17 +78,25 @@ void Rectangle::draw(U8X8_SH1106_128X64_NONAME_HW_I2C u8) {
 
 class Long : public Piece {
   public:
-    int coords[4][2] = {
-      {0, 2},
-      {0, 3},
-      {0, 4},
-      {0, 5},
-    };
+    Long();
     int moveLeft(Matrix);
     int moveRight(Matrix);
     int moveDown(Matrix);
-    void draw(U8X8_SH1106_128X64_NONAME_HW_I2C);
+    int rotateLeft(Matrix);
+    int rotateRight(Matrix);
+    //void draw(U8X8_SH1106_128X64_NONAME_HW_I2C);
 };
+
+Long::Long() {
+  coords[0][0] = 0;
+  coords[0][1] = 2;
+  coords[1][0] = 0;
+  coords[1][1] = 3;
+  coords[2][0] = 0;
+  coords[2][1] = 4;
+  coords[3][0] = 0;
+  coords[3][1] = 5;
+}
 
 
 class Matrix  // stores all fixed blocks
@@ -83,7 +104,7 @@ class Matrix  // stores all fixed blocks
   public:
     Matrix();
     void draw(U8X8_SH1106_128X64_NONAME_HW_I2C);
-    void addRectangle(Rectangle);
+    void addPiece(Piece);
     bool checkLine(int);
     bool checkAllLines();
     bool checkGameOver();
@@ -127,9 +148,9 @@ void Matrix::clearLine(int X) {
   }
 }
 
-void Matrix::addRectangle(Rectangle rect) {
+void Matrix::addPiece(Piece piece) {
   for (int i = 0; i < 4; i++) {
-    data[rect.coords[i][0]][rect.coords[i][1]] = 1;
+    data[piece.coords[i][0]][piece.coords[i][1]] = 1;
   }
 }
 
@@ -198,6 +219,15 @@ int Rectangle::moveDown(Matrix mat) {
   return ALLOWED;
 }
 
+int Rectangle::rotateLeft(Matrix mat) {
+  return FORBIDDEN;
+}
+
+int Rectangle::rotateRight(Matrix mat) {
+  return FORBIDDEN;
+}
+
+/*
 int Rectangle::moveUp() {
   for (int i = 0; i < 4; i++) {
     if (coords[i][0] - 1 < 0)
@@ -210,6 +240,65 @@ int Rectangle::moveUp() {
   }
   return ALLOWED;
 }
+*/
+
+int Long::moveLeft(Matrix mat) {
+  for (int i = 0; i < 4; i++) {
+    if (coords[i][1] - 1 < 0) {  
+      return FORBIDDEN;
+    }
+    if (mat.data[coords[i][0]][coords[i][1] - 1] == 1) {
+      return FORBIDDEN;
+    }
+  }
+
+  for (int i = 0; i < 4; i++) {
+    coords[i][1]--;
+  }
+  return ALLOWED;
+}
+
+int Long::moveRight(Matrix mat) {
+  for (int i = 0; i < 4; i++) {
+    if (coords[i][1] + 1 > YSIZE - 1) {  
+      return FORBIDDEN;
+    }
+    if (mat.data[coords[i][0]][coords[i][1] + 1] == 1) {
+      return FORBIDDEN;
+    }
+  }
+
+  for (int i = 0; i < 4; i++) {
+    coords[i][1]++;
+  }
+  return ALLOWED;
+}
+
+int Long::moveDown(Matrix mat) {
+  for (int i = 0; i < 4; i++) {
+    if (coords[i][0] + 1 > XSIZE - 1)
+    {
+      return FINAL;
+    }
+    if (mat.data[coords[i][0] + 1][coords[i][1]] == 1) {
+      return FINAL;
+    }
+  }
+
+  for (int i = 0; i < 4; i++) {
+    coords[i][0]++;
+  }
+  return ALLOWED;
+}
+
+int Long::rotateLeft(Matrix mat) {
+  return FORBIDDEN;
+}
+
+int Long::rotateRight(Matrix mat) {
+  return FORBIDDEN;
+}
+
 
 Matrix::Matrix() {
   // fill all entries with zero
@@ -225,7 +314,7 @@ int j = 0;
 int prev_j = 0;
 int prev_i = 0;
 
-Rectangle rect;
+Long piece;
 Matrix mat;
 
 
@@ -246,12 +335,12 @@ void setup() {
 
   delay(2000);
   u8x8.clearDisplay();
-  rect.draw(u8x8);
+  piece.draw(u8x8);
   u8x8.refreshDisplay();
   for (int i = 0; i++; i < 4)
   {
-    Serial.print(rect.coords[i][0]);
-    Serial.println(rect.coords[i][1]);
+    Serial.print(piece.coords[i][0]);
+    Serial.println(piece.coords[i][1]);
   }
   Serial.println("done");
 }
@@ -267,25 +356,25 @@ void loop() {
   
   if  (X > 575) {
     Serial.println("right");
-    success = rect.moveLeft(mat);
+    success = piece.moveLeft(mat);
   }
   else if (X < 450) {
     Serial.println("left");
-    success = rect.moveRight(mat);
+    success = piece.moveRight(mat);
   }
   if (success == ALLOWED) {
     u8x8.clearDisplay();
-    rect.draw(u8x8);
+    piece.draw(u8x8);
     mat.draw(u8x8);
     u8x8.refreshDisplay();
   }
 
   currentMillis = millis();
   if (currentMillis - previousMillis > DELAY) {
-    success = rect.moveDown(mat);
+    success = piece.moveDown(mat);
     if (success == ALLOWED) {
       u8x8.clearDisplay();
-      rect.draw(u8x8);
+      piece.draw(u8x8);
       mat.draw(u8x8);
       u8x8.refreshDisplay();
     }
@@ -299,9 +388,9 @@ void loop() {
       }
       else {
         u8x8.clearDisplay();
-        mat.addRectangle(rect);
+        mat.addPiece(piece);
         mat.draw(u8x8);
-        rect = Rectangle();
+        piece = Long();
         u8x8.refreshDisplay();
         mat.checkAllLines();
       }
