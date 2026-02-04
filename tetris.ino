@@ -55,8 +55,25 @@ class Matrix  // stores all fixed blocks
     Matrix();
     void drawMatrix(U8X8_SH1106_128X64_NONAME_HW_I2C);
     void addRectangle(Rectangle);
+    bool checkLine();
+    void clearLine();
     int data[XSIZE][YSIZE];
 };
+
+
+bool Matrix::checkLine() {
+  for (int i = 0; i < YSIZE; i++)
+  if (data[XSIZE - 1][i] == 0) {return false;}
+  return true;
+}
+
+void Matrix::clearLine() {
+  for (int i = XSIZE - 1; i >= 0; i--) {
+    for (int j = 0; j< YSIZE; j++) {
+      data[i][j] = data[i - 1][j];
+    }
+  }
+}
 
 void Matrix::addRectangle(Rectangle rect) {
   for (int i = 0; i < 4; i++) {
@@ -199,7 +216,7 @@ void setup() {
   u8x8.setPowerSave(0);
   u8x8.setFont(u8x8_font_chroma48medium8_r);
 
-  mat.data[14][4] = 1;
+  //mat.data[14][4] = 1;
   Serial.begin(9600);
   Serial.println("Qwiic Joystick Example");
 
@@ -261,6 +278,10 @@ void loop() {
       mat.addRectangle(rect);
       drawRectangle(mat, u8x8);
       rect = Rectangle();
+      u8x8.refreshDisplay();
+      while (mat.checkLine()) {
+        mat.clearLine();
+      }
     }
     previousMillis = currentMillis;
   }
